@@ -96,6 +96,12 @@ pub async fn asset_handler(Path(path): Path<String>, State(data): State<SharedDa
         APPLICATION_OCTET_STREAM
     };
 
-    hm.insert(header::CONTENT_TYPE, HeaderValue::from_str(mime.as_ref()).expect("Failed to parse mime value"));
+    let hv = if let Ok(v) = HeaderValue::from_str(mime.as_ref()) {
+        v
+    } else {
+        HeaderValue::from_static("application/octet-stream")
+    };
+    hm.insert(header::CONTENT_TYPE, hv);
+
     (StatusCode::OK, hm, bytes)
 }

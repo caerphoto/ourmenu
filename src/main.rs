@@ -60,7 +60,7 @@ async fn main() {
     log::debug!("Registered templates:");
     let templates = common_data.hb.get_templates();
     for key in templates.keys() {
-        log::debug!("{}", key);
+        log::info!("{}", key);
     }
 
     let initialization_config = common_data.config.clone();

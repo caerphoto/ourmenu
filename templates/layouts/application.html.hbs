@@ -2,9 +2,15 @@
 <html>
   <head>
     <title>{{data.title}} &middot OurMenu</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+
     <link rel="stylesheet" href="/assets/css/pico.min.css">
   </head>
   <body>
-    {{> page}}
+    <main class="container">
+      {{> (lookup this "page") }}
+    </main>
   </body>
 </html>

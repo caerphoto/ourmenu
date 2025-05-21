@@ -1,4 +1,6 @@
-use crate::SharedData;
+pub mod session;
+pub mod user;
+
 use axum::{
     debug_handler,
     extract::{Path, State},
@@ -23,50 +25,53 @@ use std::path::{
     PathBuf,
 };
 
+use crate::{CommonData, SharedData};
+
 #[derive(Serialize)]
 struct TemplateData<T: Serialize> {
-    parent: String,
+    page: String,
     data: T
 }
 
 fn render_page<T>(hb: &Handlebars, page_name: &str, data: &T) -> Result<String, RenderError>
-where 
+where
     T: serde::Serialize
 {
     let template_data = TemplateData {
-        parent: "layouts/application.html".to_string(),
+        page: String::from(page_name),
         data
     };
-    hb.render(page_name, &template_data)
+    hb.render("layouts/application.html", &template_data)
+}
+
+pub fn create_html_response(data: &CommonData, page_name: &str, title: &str) -> (StatusCode, Html<String>) {
+    let page_data = json!({
+        "title": title,
+    });
+
+    match render_page(&data.hb, page_name, &page_data) {
+        Ok(r) => (StatusCode::OK , Html(r)),
+        Err(e) => match e.reason() {
+            RenderErrorReason::TemplateNotFound(_) => (StatusCode::NOT_FOUND, Html(data.error_pages.not_found.clone())),
+            _ => {
+                log::error!("Internal server error: {:?}", e);
+
+                (StatusCode::INTERNAL_SERVER_ERROR, Html(data.error_pages.server_error.clone()))
+            }
+        }
+    }
 }
 
 fn get_local_path<P: AsRef<FsPath>>(requested_path: P, exe_path: &PathBuf) -> PathBuf {
-
-    log::info!("Requested path: {}", requested_path.as_ref().display());
-
     let mut local_path = PathBuf::from(exe_path);
     local_path.push("static/assets");
     local_path.push(requested_path);
-    log::info!("File system path: {}", local_path.display());
     local_path
 }
 
 #[debug_handler]
 pub async fn home_handler(State(data): State<SharedData>) -> (StatusCode, Html<String>) {
-    let data = data.read();
-
-    let page_data = json!({
-        "title": "Welcome",
-        "other_stuff": "testing other stuff",
-    });
-
-    match render_page(&data.hb, "index.html", &page_data) {
-        Ok(r) => (StatusCode::OK , Html(r)),
-        Err(e) => match e.reason() {
-            RenderErrorReason::TemplateNotFound(_) => (StatusCode::NOT_FOUND, Html(data.error_pages.not_found.clone())),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, Html(data.error_pages.server_error.clone()))
-        }
-    }
+    create_html_response(&*(data.read()), "index.html", "Welcome")
 }
 
 #[debug_handler]
@@ -75,6 +80,8 @@ pub async fn asset_handler(Path(path): Path<String>, State(data): State<SharedDa
         let data = data.read();
         get_local_path(&path, &data.content_dir)
     };
+
+    log::info!("Responding with asset file: {}", local_path.display());
 
     let mut hm = HeaderMap::new();
 

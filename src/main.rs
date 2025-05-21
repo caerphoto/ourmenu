@@ -3,7 +3,7 @@ mod handlers;
 
 
 use handlebars::Handlebars;
-use std::net::IpAddr;
+use std::{net::IpAddr, path::PathBuf};
 use tokio::net::TcpListener;
 use std::{
     fs,
@@ -27,7 +27,8 @@ pub struct ErrorPages {
 pub struct CommonData {
     config: Config,
     hb: Handlebars<'static>,
-    error_pages: ErrorPages
+    error_pages: ErrorPages,
+    content_dir: PathBuf
 }
 pub type SharedData = Arc<RwLock<CommonData>>;
 
@@ -39,6 +40,8 @@ async fn main() {
     hb.register_templates_directory("templates", handlebars::DirectorySourceOptions::default())
         .expect("Failed to register Handlebars templates directory");
 
+    let content_dir = std::env::current_dir().expect("Failed to get current directory");
+
     let common_data = CommonData {
         config: Config {
             listen_ip: String::from("127.0.0.1"),
@@ -48,13 +51,16 @@ async fn main() {
         error_pages: ErrorPages {
             not_found: fs::read_to_string("static/not_found.html").expect("Failed to read not_found error page"),
             server_error: fs::read_to_string("static/server_error.html").expect("Failed to read server_error error page"),
-        }
+        },
+        content_dir
     };
 
-    log::info!("Registered templates:");
+
+    log::info!("Executable directory: {}", common_data.content_dir.display());
+    log::debug!("Registered templates:");
     let templates = common_data.hb.get_templates();
     for key in templates.keys() {
-        log::info!("{}", key);
+        log::debug!("{}", key);
     }
 
     let initialization_config = common_data.config.clone();

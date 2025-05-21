@@ -670,6 +670,7 @@ dependencies = [
  "env_logger",
  "handlebars",
  "log",
+ "mime",
  "parking_lot",
  "serde",
  "serde_json",
